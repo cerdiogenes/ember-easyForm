@@ -12,8 +12,18 @@ Ember.Handlebars.registerHelper('input-field', function(property, options) {
     options.hash.inputOptions = Ember.Handlebars.get(this, options.hash.inputOptionsBinding, options);
   }
 
-  var modelPath = Ember.Handlebars.get(this, 'formForModelPath', options);
-  options.hash.modelPath = modelPath;
+  var modelPath = function() {
+    var formForModelPath = Ember.Handlebars.get(this, 'formForModelPath', options);
+
+    if (formForModelPath === 'context' || formForModelPath === 'controller' || formForModelPath === 'this') {
+      return 'content';
+    } else if (formForModelPath) {
+      return formForModelPath;
+    } else {
+      return 'content';
+    }
+  };
+  options.hash.modelPath = modelPath();
 
   property = options.hash.property;
 
@@ -26,18 +36,14 @@ Ember.Handlebars.registerHelper('input-field', function(property, options) {
       return property;
     }
 
-    if (modelPath) {
-      return modelPath + '.' + property;
-    } else {
-      return property;
-    }
+    return modelPath() + '.' + property;
   };
 
   options.hash.valueBinding = modelPropertyPath(property);
 
   var context = this,
     propertyType = function(property) {
-      var constructor = (get(context, 'content') || context).constructor;
+      var constructor = (get(context, modelPath()) || context).constructor;
 
       if (constructor.proto) {
         return Ember.meta(constructor.proto(), false).descs[property];
@@ -93,11 +99,11 @@ Ember.Handlebars.registerHelper('input-field', function(property, options) {
       } else if (property.match(/search/)) {
         options.hash.type = 'search';
       } else {
-        if (propertyType(property) === 'number' || typeof(get(context,property)) === 'number') {
+        if (propertyType(property) === 'number' || typeof(get(context,modelPropertyPath(property))) === 'number') {
           options.hash.type = 'number';
-        } else if (propertyType(property) === 'date' || (!Ember.isNone(get(context,property)) && get(context,property).constructor === Date)) {
+        } else if (propertyType(property) === 'date' || (!Ember.isNone(get(context,modelPropertyPath(property))) && get(context,modelPropertyPath(property)).constructor === Date)) {
           options.hash.type = 'date';
-        } else if (propertyType(property) === 'boolean' || (!Ember.isNone(context.get(property)) && get(context,property).constructor === Boolean)) {
+        } else if (propertyType(property) === 'boolean' || (!Ember.isNone(context.get(modelPropertyPath(property))) && get(context,modelPropertyPath(property)).constructor === Boolean)) {
           options.hash.checkedBinding = property;
           return Ember.Handlebars.helpers.view.call(context, Ember.EasyForm.Checkbox, options);
         }
